@@ -7,7 +7,7 @@ from pyspark.sql import SparkSession
 # Spark session & context
 spark = (SparkSession
          .builder
-         .master('local')
+         .master('local[2]')
          .appName('wiki-changes-event-consumer')
          .config("spark.jars.packages", "org.apache.spark:spark-sql-kafka-0-10_2.12:3.0.0")
          .getOrCreate())
@@ -18,7 +18,8 @@ df = (spark
   .format("kafka")
   .option("kafka.bootstrap.servers", "localhost:9092") # kafka server
   .option("subscribe", "myTopic") # topic
-  .option("startingOffsets", "earliest") # start from beginning
+  .option("failOnDataLoss","false")
+  .option("startingOffsets", "latest") # start from beginning
   .load())
 
 df.printSchema()
@@ -27,5 +28,7 @@ query=df.selectExpr("CAST(value AS STRING)").writeStream.outputMode('append')\
     .format('console')\
     .option('truncate', 'false')\
     .start()
+
+
 
 query.awaitTermination()
