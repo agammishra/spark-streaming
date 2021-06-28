@@ -1,5 +1,16 @@
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
+from pyspark.sql import *
+
+
+def df_writer(df, epochId):
+  table_path='C:\\Users\\Agam_Kumar\\Desktop\\streaming_output\\'
+  df.write \
+    .format("csv") \
+    .mode('overwrite') \
+    .option('header',True)\
+    .save(table_path)
+
+
 
 if __name__ == "__main__":
     print("Application Started ...")
@@ -9,6 +20,11 @@ if __name__ == "__main__":
             .appName("Socket Streaming Demo") \
             .master("local[*]") \
             .getOrCreate()
+
+    spark.conf.set("spark.sql.shuffle.partitions", "1")
+    checkpoint_dir='C:\\Users\\Agam_Kumar\\Desktop\\streaming_checkpoint\\socket_triggering_handson\\'
+
+
 
     stream_df = spark \
                 .readStream \
@@ -27,9 +43,12 @@ if __name__ == "__main__":
                             .groupBy("word").count()
 
     write_query = stream_word_count_df \
+    .toDF("word", "count")\
     .writeStream \
-    .outputMode("complete")\
-    .format("console") \
+    .foreachBatch(df_writer)\
+    .outputMode("update") \
+    .option("checkpointLocation", checkpoint_dir)\
+    .trigger(processingTime="5 second") \
     .start()
 
     write_query.awaitTermination()
